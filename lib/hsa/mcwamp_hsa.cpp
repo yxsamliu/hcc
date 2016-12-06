@@ -822,6 +822,9 @@ private:
 
 public:
     HSAQueue(KalmarDevice* pDev, hsa_agent_t agent, execute_order order) : KalmarQueue(pDev, queuing_mode_automatic, order), commandQueue(nullptr), asyncOps(), opSeqNums(0), bufferKernelMap(), kernelBufferMap() {
+       
+static int queueID = 0;
+
         hsa_status_t status;
 
         /// Query the maximum size of the queue.
@@ -833,7 +836,8 @@ public:
         status = hsa_queue_create(agent, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL,
                                   UINT32_MAX, UINT32_MAX, &commandQueue);
 #if KALMAR_DEBUG
-        std::cerr << "HSAQueue::HSAQueue(): created an HSA command queue: " << commandQueue << "\n";
+        std::cerr << "HSAQueue queue_max_size: " << queue_size << std::endl;
+        std::cerr << "HSAQueue::HSAQueue(): created an HSA command queue #" << queueID++ << ": " << commandQueue << "\n";
 #endif
         STATUS_CHECK_Q(status, commandQueue, __LINE__);
 
@@ -2184,10 +2188,24 @@ public:
     }
 
     std::shared_ptr<KalmarQueue> createQueue(execute_order order = execute_in_order) override {
-        std::shared_ptr<KalmarQueue> q =  std::shared_ptr<KalmarQueue>(new HSAQueue(this, agent, order));
-        queues_mutex.lock();
-        queues.push_back(q);
-        queues_mutex.unlock();
+ 
+        std::shared_ptr<KalmarQueue> q;
+        bool found = false;
+#if TLS_QUEUE
+        std::thread::id tid = std::this_thread::get_id();
+        tlsDefaultQueueMap_mutex.lock();
+        if (tlsDefaultQueueMap.find(tid) != tlsDefaultQueueMap.end()) {
+          q =  tlsDefaultQueueMap[tid];
+          found = true;
+        }
+        tlsDefaultQueueMap_mutex.unlock();
+#endif
+        if(!found) {
+          q =  std::shared_ptr<KalmarQueue>(new HSAQueue(this, agent, order));
+          queues_mutex.lock();
+          queues.push_back(q);
+          queues_mutex.unlock();
+        }
         return q;
     }
 

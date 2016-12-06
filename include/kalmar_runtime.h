@@ -279,6 +279,8 @@ private:
 
     // Set true if the device has large bar
 
+protected:
+
 #if !TLS_QUEUE
     /// default KalmarQueue
     std::shared_ptr<KalmarQueue> def;
@@ -351,6 +353,10 @@ public:
         return def;
 #else
         std::thread::id tid = std::this_thread::get_id();
+
+
+#if 0
+
         tlsDefaultQueueMap_mutex.lock();
         if (tlsDefaultQueueMap.find(tid) == tlsDefaultQueueMap.end()) {
             tlsDefaultQueueMap[tid] = createQueue();
@@ -358,6 +364,25 @@ public:
         std::shared_ptr<KalmarQueue> result = tlsDefaultQueueMap[tid];
         tlsDefaultQueueMap_mutex.unlock();
         return result;
+
+#else
+        std::shared_ptr<KalmarQueue> result;
+        tlsDefaultQueueMap_mutex.lock();
+        if (tlsDefaultQueueMap.find(tid) == tlsDefaultQueueMap.end()) {
+            tlsDefaultQueueMap_mutex.unlock();
+            result = createQueue();
+            tlsDefaultQueueMap_mutex.lock();
+            tlsDefaultQueueMap[tid] = result;
+        }
+        else {
+          result = tlsDefaultQueueMap[tid];
+        }
+        tlsDefaultQueueMap_mutex.unlock();
+        return result;
+#endif
+
+
+
 #endif
     }
 
