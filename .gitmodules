@@ -10,3 +10,7 @@
 	path = clang
 	url = https://github.com/RadeonOpenCompute/hcc-clang-upgrade.git
 	branch = clang_tot_upgrade
+[submodule "clang/tools/extra"]
+	path = clang/tools/extra
+	url = https://github.com/RadeonOpenCompute/clang-tools-extra.git
+	branch = clang_tot_upgrade
